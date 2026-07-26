@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRO-TRACK // Enterprise Procurement & Supplier Assessment System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] min-h-screen text-[#0f172a] flex flex-col">
+
+    <nav class="bg-[#0f172a] text-white px-6 py-4 flex items-center justify-between shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg font-bold tracking-wider text-sm">PRO-TRACK</div>
+            <span class="text-xs text-slate-400 border-l border-slate-700 pl-3 font-medium">SCM Architecture v3.0 Stable</span>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <div class="text-right">
+                <span class="block text-xs text-slate-400">Active Profile Security Context</span>
+                <select id="roleSelector" onchange="switchUserRole(this.value)" class="bg-[#1e293b] text-white text-xs rounded border border-slate-700 px-2 py-1 font-semibold focus:outline-none focus:border-blue-500">
+                    <option value="manager">Procurement Manager (Admin-All)</option>
+                    <option value="specialist">Procurement Specialist (Data Entry)</option>
+                    <option value="warehouse">Warehouse Operator (Logs-Only)</option>
+                    <option value="finance">Finance Analyst (Read-Alerts)</option>
+                </select>
+            </div>
+            <div id="userBadge" class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider">
+                Manager Mode
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex-grow flex">
+        
+        <aside class="w-64 bg-white border-r border-slate-200 p-4 flex flex-col gap-1 shadow-sm">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2 block">Core Infrastructure</span>
+            <button onclick="showRoute('dashboard')" class="nav-btn active-nav w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors">
+                📊 Operations Command Center
+            </button>
+            <button onclick="showRoute('po-module')" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors">
+                📥 PO Upload & Document OCR
+            </button>
+            <button onclick="showRoute('supplier-profiles')" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors">
+                🏢 Supplier Performance Directory
+            </button>
+            <button onclick="showRoute('finance-module')" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors">
+                💳 Payment Ledger & Terms
+            </button>
+            <button onclick="showRoute('warehouse-module')" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors">
+                🏭 Logistics & Transfer Hub
+            </button>
+            <div class="mt-auto border-t border-slate-100 pt-4">
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                    <span class="block text-[11px] font-bold text-slate-500">System Integrity Alerts</span>
+                    <div id="sidebarAlertCount" class="text-xs text-emerald-600 font-medium mt-1">✓ All suppliers above risk line</div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-grow p-8 overflow-y-auto max-w-[1600px] mx-auto w-full">
+            
+            <div id="systemAlertBanner" class="hidden mb-6 p-4 rounded-xl border flex items-center justify-between shadow-xs">
+                <div class="flex items-center gap-3">
+                    <span id="alertIcon" class="text-lg">⚠️</span>
+                    <div>
+                        <h4 id="alertHeadline" class="text-xs font-bold"></h4>
+                        <p id="alertBody" class="text-xs text-slate-500 mt-0.5"></p>
+                    </div>
+                </div>
+                <button onclick="this.parentElement.classList.add('hidden')" class="text-slate-400 hover:text-slate-600 font-bold">&times;</button>
+            </div>
+
+            <section id="view-dashboard" class="route-view flex flex-col gap-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold tracking-tight text-slate-900">Operations Command Center</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Real-time macro performance indicators across procurement sectors.</p>
+                    </div>
+                    <button onclick="seedMockData()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-xs transition-colors">
+                        ⚙️ Seed Demonstration Dataset
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+                        <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block">Active Purchase Orders</span>
+                        <div id="cardActivePOs" class="text-2xl font-bold text-slate-800 mt-1 mono">0</div>
+                        <span class="text-[10px] text-slate-500 block mt-1">In procurement cycle</span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+                        <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block">Critical Risk Suppliers</span>
+                        <div id="cardRiskSuppliers" class="text-2xl font-bold text-slate-800 mt-1 mono">0</div>
+                        <span id="cardRiskSuppliersSub" class="text-[10px] text-emerald-600 block mt-1">Fulfillment stable</span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+                        <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block">Pending Warehouse Drops</span>
+                        <div id="cardPendingWarehouse" class="text-2xl font-bold text-slate-800 mt-1 mono">0</div>
+                        <span class="text-[10px] text-slate-500 block mt-1">Awaiting unloading confirmation</span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+                        <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block">Financial Liability (30D)</span>
+                        <div id="cardLiability" class="text-2xl font-bold text-slate-800 mt-1 mono">$0.00</div>
+                        <span class="text-[10px] text-amber-600 block mt-1">Approaching terms limit</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs lg:col-span-1 flex flex-col">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Supplier Fulfillment Leaderboard</h3>
+                        <div id="leaderboardContainer" class="flex flex-col gap-2 overflow-y-auto max-h-[320px] pr-1 flex-grow">
+                            <div class="text-xs text-slate-400 text-center py-8">No records deployed. Run seed generator engine above.</div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs lg:col-span-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Logistics Network Cycle Efficiency Trends</h3>
+                        <div class="h-[320px] relative w-full">
+                            <canvas id="macroAnalyticsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-po-module" class="route-view hidden flex flex-col gap-6">
+                <div>
+                    <h2 class="text-xl font-bold tracking-tight text-slate-900">PO Processing & Verification Desk</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Ingest supplier documentation using simulated client-side OCR extraction mapping algorithms.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-500 transition-colors text-center cursor-pointer flex flex-col items-center justify-center p-8 min-h-[220px]" onclick="triggerPoUpload()">
+                        <input type="file" id="poFileInput" class="hidden" accept=".pdf" onchange="simulatePoOcr(this.files)">
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-full mb-3 font-bold text-lg">📄</div>
+                        <h3 class="text-xs font-bold text-slate-700">Drag & Drop Issuance PO (PDF)</h3>
+                        <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">Upload the formal system manifest to map scheduled parameters into data arrays.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-500 transition-colors text-center cursor-pointer flex flex-col items-center justify-center p-8 min-h-[220px]" onclick="triggerRecUpload()">
+                        <input type="file" id="recFileInput" class="hidden" accept=".pdf,.xlsx" onchange="simulateReceiptOcr(this.files)">
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-full mb-3 font-bold text-lg">📦</div>
+                        <h3 class="text-xs font-bold text-slate-700">Drag & Drop Received Delivery Sheet (PDF/XLSX)</h3>
+                        <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">Upload the physical receiving confirmation receipt to detect variance errors.</p>
+                    </div>
+                </div>
+
+                <div id="ocrReviewSection" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hidden">
+                    <div class="bg-slate-900 px-4 py-3 flex justify-between items-center text-white">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                            <h3 class="text-xs font-bold tracking-wide uppercase">Intelligent Document Extraction Review</h3>
+                        </div>
+                        <span class="text-[10px] mono text-slate-400">Review and correct fields before saving</span>
+                    </div>
+                    <div class="p-4 overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-slate-400 font-semibold bg-slate-50/70">
+                                    <th class="p-2.5">Field Domain Context</th>
+                                    <th class="p-2.5">Extracted Original String Value</th>
+                                    <th class="p-2.5">System Verification/Confidence Indicator</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ocrReviewTableBody">
+                                </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-slate-50 border-t border-slate-200 p-3 flex justify-end gap-3">
+                        <button onclick="cancelOcrReview()" class="text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">Discard Draft</button>
+                        <button id="commitOcrBtn" onclick="commitOcrPayload()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-xs">Commit Formally to Database</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-supplier-profiles" class="route-view hidden flex flex-col gap-6">
+                <div>
+                    <h2 class="text-xl font-bold tracking-tight text-slate-900">Supplier Performance Directory</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Historical fulfillment analysis matrices and configured legal parameters for operational suppliers.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 lg:col-span-1 flex flex-col gap-2 max-h-[600px] overflow-y-auto">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-1 block">Active Profiles Registry</span>
+                        <div id="supplierDirectoryList" class="flex flex-col gap-1">
+                            </div>
+                    </div>
+                    <div id="supplierProfileWorkspace" class="bg-white border border-slate-200 rounded-xl p-6 lg:col-span-3 min-h-[400px]">
+                        <div class="text-center text-slate-400 py-24 text-xs">Select a corporate supplier profile from the navigation directory to map logistics records.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-finance-module" class="route-view hidden flex flex-col gap-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold tracking-tight text-slate-900">Financial Payment Schedules Ledger</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Automated accounting metrics mapped dynamically against configured transactional payment terms.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="exportFinanceData('xlsx')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">📥 Export Sheets (.xlsx)</button>
+                        <button onclick="exportFinanceData('csv')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">📥 Export Ledger (.csv)</button>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Aggregated Payment Liabilities Record</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-slate-400 font-semibold bg-slate-50/70">
+                                    <th class="p-3">PO Number</th>
+                                    <th class="p-3">Vendor / Entity</th>
+                                    <th class="p-3">Contract Terms</th>
+                                    <th class="p-3">Invoice Date</th>
+                                    <th class="p-3">Maturity/Due Date</th>
+                                    <th class="p-3 text-right">Balance Capital Value</th>
+                                    <th class="p-3 text-center">Status Flag</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financeLedgerTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center p-8 text-slate-400">No liability entries compiled. Seed application data arrays.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-warehouse-module" class="route-view hidden flex flex-col gap-6">
+                <div>
+                    <h2 class="text-xl font-bold tracking-tight text-slate-900">Logistics Operations & Branch Transfer Hub</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Control point tracking times from port unloading points down to structural retail/distribution points.</p>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Active Logistics Shipments Pipeline</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-slate-400 font-semibold bg-slate-50/70">
+                                    <th class="p-3">PO Reference</th>
+                                    <th class="p-3">Supplier Origin</th>
+                                    <th class="p-3">Docking Confirmation Timestamp</th>
+                                    <th class="p-3">Retail Branch Dispatch Status</th>
+                                    <th class="p-3 text-center">Actions Interaction Block</th>
+                                </tr>
+                            </thead>
+                            <tbody id="warehousePipelineTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center p-8 text-slate-400">No active tracking metrics deployed. Seed system states.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // CORE PERSISTENT DATA SCHEMA STORE INMEMORY SIMULATOR
+        let STATE = {
+            suppliers: [],
+            purchaseOrders: [],
+            receivedOrders: [],
+            warehouseLogs: [],
+            currentRole: 'manager',
+            activeOcrDraft: null
+        };
+
+        // Micro Role access matrix validations configuration
+        const ROLE_PERMISSIONS = {
+            manager: { canCommitOcr: true, canLogWarehouse: true, canOverrideAssess: true, viewFinance: true },
+            specialist: { canCommitOcr: true, canLogWarehouse: false, canOverrideAssess: false, viewFinance: false },
+            warehouse: { canCommitOcr: false, canLogWarehouse: true, canOverrideAssess: false, viewFinance: false },
+            finance: { canCommitOcr: false, canLogWarehouse: false, canOverrideAssess: false, viewFinance: true }
+        };
+
+        // Global Variable reference to hold chart objects cleanly
+        let globalMacroChartInstance = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initializeApplicationFramework();
+        });
+
+        function initializeApplicationFramework() {
+            console.log("[PRO-TRACK] Initializing Enterprise Application Architecture Engine...");
+            switchUserRole('manager');
+            showRoute('dashboard');
+            renderDashboardDashboardCommandCenter();
+        }
+
+        // NAVIGATION ROUTER LOGIC 
+        function showRoute(routeId) {
+            document.querySelectorAll('.route-view').forEach(view => view.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('bg-blue-50', 'text-blue-600', 'active-nav'));
+            
+            const targetView = document.getElementById(`view-${routeId}`);
+            if(targetView) targetView.classList.remove('hidden');
+            
+            // Highlight matching nav item
+            const eventBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.getAttribute('onclick').includes(routeId));
+            if(eventBtn) eventBtn.classList.add('bg-blue-50', 'text-blue-600', 'active-nav');
+
+            // View-specific initialization hooks
+            if(routeId === 'dashboard') renderDashboardDashboardCommandCenter();
+            if(routeId === 'supplier-profiles') renderSupplierDirectoryLayout();
+            if(routeId === 'finance-module') renderFinancialLedgerData();
+            if(routeId === 'warehouse-module') renderWarehouseTrackingPipeline();
+        }
+
+        // ROLE CONTEXT EXECUTIVE HANDLING
+        function switchUserRole(roleKey) {
+            STATE.currentRole = roleKey;
+            const badge = document.getElementById('userBadge');
+            
+            if(roleKey === 'manager') { badge.className = "bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider"; badge.textContent = "Manager Mode"; }
+            if(roleKey === 'specialist') { badge.className = "bg-purple-500/10 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider"; badge.textContent = "Specialist Mode"; }
+            if(roleKey === 'warehouse') { badge.className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider"; badge.textContent = "Warehouse Operations"; }
+            if(roleKey === 'finance') { badge.className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider"; badge.textContent = "Finance Control"; }
+
+            triggerSystemToast("🔑 Security Scope Updated", `Context re-aligned to authorization access tier: [${roleKey.toUpperCase()}]`, false);
+        }
+
+        function verifyAuthorization(actionKey) {
+            const allowed = ROLE_PERMISSIONS[STATE.currentRole][actionKey];
+            if(!allowed) {
+                triggerSystemToast("🛑 Security Constraint", `This operational role [${STATE.currentRole.toUpperCase()}] lacks clearance for this command. Switch access profile tiers above if authorized.`, true);
+                return false;
+            }
+            return true;
+        }
+
+        // NOTIFICATION UTILITY ALERTS ENGINE
+        function triggerSystemToast(headline, message, isError = false) {
+            const banner = document.getElementById('systemAlertBanner');
+            const headlineEl = document.getElementById('alertHeadline');
+            const bodyEl = document.getElementById('alertBody');
+            const iconEl = document.getElementById('alertIcon');
+
+            banner.classList.remove('hidden', 'bg-red-50', 'border-red-200', 'text-red-800', 'bg-blue-50', 'border-blue-200', 'text-blue-800');
+            
+            if(isError) {
+                banner.classList.add('bg-red-50', 'border-red-200', 'text-red-800');
+                iconEl.textContent = "🛑";
+            } else {
+                banner.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-800');
+                iconEl.textContent = "⚙️";
+            }
+
+            headlineEl.textContent = headline;
+            bodyEl.textContent = message;
+        }
+
+        // DATA ENGINE SEED INJECTOR FOR DEMO PREVIEW
+        function seedMockData() {
+            console.log("[PRO-TRACK] Injecting complete enterprise baseline data framework structures...");
+            
+            // Build 4 dynamic complex corporate suppliers
+            STATE.suppliers = [
+                { id: 101, name: "Apex BioMedical Logistics", code: "SUP-APX-01", payment_term_type: "NET45", lead_time_bench: 3 },
+                { id: 102, name: "Vertex Pharma Consortium", code: "SUP-VTX-02", payment_term_type: "EOM", lead_time_bench: 2 },
+                { id: 103, name: "Horizon Manufacturing Ltd", code: "SUP-HRZ-03", payment_term_type: "CONSIGNMENT", lead_time_bench: 5 },
+                { id: 104, name: "Alpha Clinical Systems", code: "SUP-ALP-04", payment_term_type: "NET60", lead_time_bench: 3 }
+            ];
+
+            // Build out relational Purchase Orders history loop tracking arrays
+            STATE.purchaseOrders = [
+                { id: 5001, po_number: "PO-2026-001", supplier_id: 101, order_date: "2026-06-01", expected_lead_time: 3, qty_ordered: 1200, total_value: 45000, status: "Transferred" },
+                { id: 5002, po_number: "PO-2026-002", supplier_id: 102, order_date: "2026-06-05", expected_lead_time: 2, qty_ordered: 800, total_value: 32000, status: "Transferred" },
+                { id: 5003, po_number: "PO-2026-003", supplier_id: 103, order_date: "2026-06-12", expected_lead_time: 5, qty_ordered: 2500, total_value: 125000, status: "Docked" },
+                { id: 5004, po_number: "PO-2026-004", supplier_id: 104, order_date: "2026-06-20", expected_lead_time: 3, qty_ordered: 400, total_value: 18000, status: "PO Issued" }
+            ];
+
+            // Build out matching dependent transaction confirmation components
+            STATE.receivedOrders = [
+                { id: 9001, po_id: 5001, qty_received: 1200, value_received: 45000, receipt_date: "2026-06-03" }, // Perfect fulfillment rate 100% within 2 days execution
+                { id: 9002, po_id: 5002, qty_received: 620, value_received: 24800, receipt_date: "2026-06-11" },  // Highly failed rate 77.5% over 6 days delay
+                { id: 9003, po_id: 5003, qty_received: 2450, value_received: 122500, receipt_date: "2026-06-16" } // Acceptable 98% rate within 4 days profile bounds
+            ];
+
+            // Build logistics warehouse dispatch pipeline configurations tracking matrices
+            STATE.warehouseLogs = [
+                { id: 301, po_id: 5001, docked_timestamp: "2026-06-03 09:14:00", transfer_timestamp: "2026-06-05 14:30:00", branch_status: "Dispatched" },
+                { id: 302, po_id: 5002, docked_timestamp: "2026-06-11 11:22:00", transfer_timestamp: "2026-06-12 16:15:00", branch_status: "Dispatched" },
+                { id: 303, po_id: 5003, docked_timestamp: "2026-06-16 08:00:00", transfer_timestamp: null, branch_status: "Holding" }
+            ];
+
+            triggerSystemToast("📦 Data Seed Complete", "Successfully populated data schema registers with historical demonstration profiles.", false);
+            renderDashboardDashboardCommandCenter();
+        }
+
+        // MODULE CALCULATIONS PIPELINE COMPILERS
+        function compileSupplierMetrics(supplierId) {
+            const sOrders = STATE.purchaseOrders.filter(p => p.supplier_id === supplierId);
+            let totalOrdered = 0;
+            let totalReceived = 0;
+            let aggregateLeadTimeDeviation = 0;
+            let trackingCompletedReceiptCycles = 0;
+
+            sOrders.forEach(po => {
+                const rec = STATE.receivedOrders.find(r => r.po_id === po.id);
+                if(rec) {
+                    totalOrdered += po.qty_ordered;
+                    totalReceived += rec.qty_received;
+                    
+                    const orderDateInst = new Date(po.order_date);
+                    const recDateInst = new Date(rec.receipt_date);
+                    const daysTaken = Math.round((recDateInst - orderDateInst) / (1000 * 60 * 60 * 24));
+                    
+                    aggregateLeadTimeDeviation += (daysTaken - po.expected_lead_time);
+                    trackingCompletedReceiptCycles++;
+                }
+            });
+
+            const fulfillmentRate = totalOrdered > 0 ? (totalReceived / totalOrdered) * 100 : 100;
+            const avgLeadTimeDeviation = trackingCompletedReceiptCycles > 0 ? (aggregateLeadTimeDeviation / trackingCompletedReceiptCycles) : 0;
+
+            let riskStatus = "Acceptable";
+            if(fulfillmentRate < 85) riskStatus = "Poor";
+            if(fulfillmentRate < 70) riskStatus = "Critical";
+
+            return {
+                fulfillmentRate: Math.round(fulfillmentRate * 10) / 10,
+                avgLeadTimeDeviation: Math.round(avgLeadTimeDeviation * 10) / 10,
+                riskStatus: riskStatus,
+                ordersCount: sOrders.length
+            };
+        }
+
+        // COMMAND CENTER COMPILER UI DATA INJECTION
+        function renderDashboardDashboardCommandCenter() {
+            document.getElementById('cardActivePOs').textContent = STATE.purchaseOrders.filter(p => p.status !== "Transferred").length;
+            
+            let criticalRiskCount = 0;
+            STATE.suppliers.forEach(s => {
+                const m = compileSupplierMetrics(s.id);
+                if(m.riskStatus === "Critical" || m.riskStatus === "Poor") criticalRiskCount++;
+            });
+
+            const riskContainerBadge = document.getElementById('cardRiskSuppliersSub');
+            document.getElementById('cardRiskSuppliers').textContent = criticalRiskCount;
+            if(criticalRiskCount > 0) {
+                riskContainerBadge.className = "text-[10px] text-red-600 block mt-1";
+                riskContainerBadge.textContent = "🚨 Performance failure flags detected";
+                document.getElementById('sidebarAlertCount').className = "text-xs text-red-600 font-bold mt-1 animate-pulse";
+                document.getElementById('sidebarAlertCount').textContent = `⚠️ ${criticalRiskCount} Suppliers at performance risk`;
+            } else {
+                riskContainerBadge.className = "text-[10px] text-emerald-600 block mt-1";
+                riskContainerBadge.textContent = "✓ SCM pipeline tracking stable";
+                document.getElementById('sidebarAlertCount').className = "text-xs text-emerald-600 font-medium mt-1";
+                document.getElementById('sidebarAlertCount').textContent = "✓ All suppliers above risk line";
+            }
+
+            document.getElementById('cardPendingWarehouse').textContent = STATE.warehouseLogs.filter(w => !w.transfer_timestamp).length;
+            
+            let totalLiabilityValue = 0;
+            STATE.purchaseOrders.forEach(p => { if(p.status !== "Transferred") totalLiabilityValue += p.total_value; });
+            document.getElementById('cardLiability').textContent = `$${totalLiabilityValue.toLocaleString()}`;
+
+            // LEADERBOARD CONSOLE BUILDER
+            const leaderboard = document.getElementById('leaderboardContainer');
+            leaderboard.innerHTML = "";
+            
+            if(STATE.suppliers.length === 0) {
+                leaderboard.innerHTML = `<div class="text-xs text-slate-400 text-center py-8">No records deployed. Run seed generator engine above.</div>`;
+            } else {
+                STATE.suppliers.forEach(s => {
+                    const metrics = compileSupplierMetrics(s.id);
+                    let badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                    if(metrics.riskStatus === "Poor") badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+                    if(metrics.riskStatus === "Critical") badgeClass = "bg-red-50 text-red-700 border-red-200";
+
+                    const itemNode = document.createElement('div');
+                    itemNode.className = "flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/50 text-xs";
+                    itemNode.innerHTML = `
+                        <div>
+                            <span class="font-bold text-slate-800 block">${s.name}</span>
+                            <span class="text-[10px] text-slate-400 font-mono">${s.code} • ${metrics.ordersCount} PO cycles</span>
+                        </div>
+                        <span class="border px-2 py-1 rounded-md text-[10px] font-bold ${badgeClass}">${metrics.fulfillmentRate}% FR</span>
+                    `;
+                    leaderboard.appendChild(itemNode);
+                });
+            }
+
+            // RE-INITIALIZE CHARTS LAYER FRAMEWORK NATIVELY
+            renderMacroAnalyticsTrendsGraphic();
+        }
+
+        function renderMacroAnalyticsTrendsGraphic() {
+            const ctx = document.getElementById('macroAnalyticsChart').getContext('2d');
+            if(globalMacroChartInstance) { globalMacroChartInstance.destroy(); }
+
+            // Extract pipeline data components mapped down across states records arrays
+            const labels = STATE.purchaseOrders.map(p => p.po_number);
+            const orderedValues = STATE.purchaseOrders.map(p => p.qty_ordered);
+            const receivedValues = STATE.purchaseOrders.map(p => {
+                const r = STATE.receivedOrders.find(rec => rec.po_id === p.id);
+                return r ? r.qty_received : 0;
+            });
+
+            globalMacroChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.length ? labels : ["No Active System Framework Data"],
+                    datasets: [
+                        { label: 'Units Contracted Ordered Quantity', data: orderedValues.length ? orderedValues : [0], backgroundColor: '#3b82f6', borderRadius: 4 },
+                        { label: 'Units Physically Received Inventory', data: receivedValues.length ? receivedValues : [0], backgroundColor: '#10b981', borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { font: { size: 11, family: 'Plus Jakarta Sans' } } } },
+                    scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
+        // MODULE 1: INGEST DOCUMENT SIMULATOR PIPELINE ACTIONS
+        function triggerPoUpload() { if(verifyAuthorization('canCommitOcr')) document.getElementById('poFileInput').click(); }
+        function triggerRecUpload() { if(verifyAuthorization('canCommitOcr')) document.getElementById('recFileInput').click(); }
+
+        function simulatePoOcr(files) {
+            if(!files.length) return;
+            const file = files[0];
+            
+            // Generate standard mock parameters mapping out fields dynamically imitating server models pipelines
+            const mockPoNumber = `PO-2026-0${Math.floor(Math.random() * 900 + 100)}`;
+            const randomSupplier = STATE.suppliers.length ? STATE.suppliers[Math.floor(Math.random() * STATE.suppliers.length)] : { id: 101, name: "Apex BioMedical Logistics" };
+            
+            STATE.activeOcrDraft = {
+                type: 'PO',
+                filename: file.name,
+                fields: {
+                    po_number: mockPoNumber,
+                    supplier_id: randomSupplier.id,
+                    supplier_name: randomSupplier.name,
+                    order_date: new Date().toISOString().split('T')[0],
+                    expected_lead_time: randomSupplier.lead_time_bench || 3,
+                    qty_ordered: 1500,
+                    total_value: 67500
+                }
+            };
+            renderOcrReviewInterface();
+        }
+
+        function simulateReceiptOcr(files) {
+            if(!files.length) return;
+            const file = files[0];
+            
+            const targetPo = STATE.purchaseOrders.length ? STATE.purchaseOrders[STATE.purchaseOrders.length - 1] : { id: 5001, po_number: "PO-2026-001", qty_ordered: 1200 };
+            
+            // Intentionally introduce an operational variance discrepancy for demonstration purposes
+            const varianceQty = targetPo.qty_ordered - 50; 
+            const varianceValue = (targetPo.total_value / targetPo.qty_ordered) * varianceQty;
+
+            STATE.activeOcrDraft = {
+                type: 'RECEIPT',
+                filename: file.name,
+                fields: {
+                    po_id: targetPo.id,
+                    po_number: targetPo.po_number,
+                    qty_received: varianceQty,
+                    value_received: Math.round(varianceValue),
+                    receipt_date: new Date().toISOString().split('T')[0]
+                }
+            };
+            renderOcrReviewInterface();
+        }
+
+        function renderOcrReviewInterface() {
+            const container = document.getElementById('ocrReviewSection');
+            const tbody = document.getElementById('ocrReviewTableBody');
+            tbody.innerHTML = "";
+            container.classList.remove('hidden');
+
+            const draft = STATE.activeOcrDraft;
+            
+            if(draft.type === 'PO') {
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-100">
+                        <td class="p-3 font-semibold text-slate-500">PO Number Schema</td>
+                        <td class="p-3"><input type="text" value="${draft.fields.po_number}" onchange="STATE.activeOcrDraft.fields.po_number = this.value" class="border border-slate-200 px-2 py-1 rounded w-full font-mono"></td>
+                        <td class="p-3 text-emerald-600 font-medium">✓ Match Certainty 98%</td>
+                    </tr>
+                    <tr class="border-b border-slate-100">
+                        <td class="p-3 font-semibold text-slate-500">Corporate Origin Entity</td>
+                        <td class="p-3"><span class="font-medium text-slate-800">${draft.fields.supplier_name}</span></td>
+                        <td class="p-3 text-emerald-600 font-medium">✓ Entity Linked Row DB ID: ${draft.fields.supplier_id}</td>
+                    </tr>
+                    <tr class="border-b border-slate-100">
+                        <td class="p-3 font-semibold text-slate-500">Units Contracted Quantity</td>
+                        <td class="p-3"><input type="number" value="${draft.fields.qty_ordered}" onchange="STATE.activeOcrDraft.fields.qty_ordered = parseInt(this.value)" class="border border-slate-200 px-2 py-1 rounded w-full"></td>
+                        <td class="p-3 text-emerald-600 font-medium">✓ Extracted Int Stream</td>
+                    </tr>
+                    <tr class="border-b border-slate-100">
+                        <td class="p-3 font-semibold text-slate-500">Aggregated Net Valuation ($)</td>
+                        <td class="p-3"><input type="number" value="${draft.fields.total_value}" onchange="STATE.activeOcrDraft.fields.total_value = parseFloat(this.value)" class="border border-slate-200 px-2 py-1 rounded w-full"></td>
+                        <td class="p-3 text-emerald-600 font-medium">✓ Currencies Character Parser Certainty 94%</td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-100">
+                        <td class="p-3 font-semibold text-slate-500">Target Linked PO Identifier</td>
+                        <td class="p-3"><span class="font-mono font-medium text-slate-800">${draft.fields.po_number}</span></td>
+                        <td class="p-3 text-emerald-600 font-medium">✓ Foreign Key Reference Resolved</td>
+                    </tr>
+                    <tr class="border-b border-slate-100">
+                        <td class="p-3 font-semibold text-slate-500">Units Physically Received</td>
+                        <td class="p-3"><input type="number" value="${draft.fields.qty_received}" onchange="STATE.activeOcrDraft.fields.qty_received = parseInt(this.value)" class="border border-slate-200 px-2 py-1 rounded w-full text-red-600 font-semibold bg-red-50/50"></td>
+                        <td class="p-3 text-amber-600 font-bold">⚠️ DISCREPANCY VARIANCE DETECTED (Shortage verified against original contractual configuration)</td>
+                    </tr>
+                    <tr class="border-b border-slate-100">
+                        <td class="p-3 font-semibold text-slate-500">Actual Valuation Value Received</td>
+                        <td class="p-3"><input type="number" value="${draft.fields.value_received}" onchange="STATE.activeOcrDraft.fields.value_received = parseInt(this.value)" class="border border-slate-200 px-2 py-1 rounded w-full"></td>
+                        <td class="p-3 text-emerald-600 font-medium">✓ Calculated Pro-rata Valuation</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function cancelOcrReview() {
+            STATE.activeOcrDraft = null;
+            document.getElementById('ocrReviewSection').classList.add('hidden');
+        }
+
+        function commitOcrPayload() {
+            if(!verifyAuthorization('canCommitOcr')) return;
+            const draft = STATE.activeOcrDraft;
+
+            if(draft.type === 'PO') {
+                const newPoId = Date.now();
+                STATE.purchaseOrders.push({
+                    id: newPoId,
+                    po_number: draft.fields.po_number,
+                    supplier_id: parseInt(draft.fields.supplier_id),
+                    order_date: draft.fields.order_date,
+                    expected_lead_time: parseInt(draft.fields.expected_lead_time),
+                    qty_ordered: parseInt(draft.fields.qty_ordered),
+                    total_value: parseFloat(draft.fields.total_value),
+                    status: "PO Issued"
+                });
+                triggerSystemToast("💾 Database Commit Executed", `Successfully finalized Purchase Order ${draft.fields.po_number} entry record structures into transaction layer registries.`, false);
+            } else {
+                STATE.receivedOrders.push({
+                    id: Date.now(),
+                    po_id: parseInt(draft.fields.po_id),
+                    qty_received: parseInt(draft.fields.qty_received),
+                    value_received: parseFloat(draft.fields.value_received),
+                    receipt_date: draft.fields.receipt_date
+                });
+                
+                // Track dynamic structural transition statuses inside matching target reference files
+                const idx = STATE.purchaseOrders.findIndex(p => p.id === parseInt(draft.fields.po_id));
+                if(idx !== -1) STATE.purchaseOrders[idx].status = "Docked";
+
+                // Seed tracking pipelines indices 
+                STATE.warehouseLogs.push({
+                    id: Date.now(),
+                    po_id: parseInt(draft.fields.po_id),
+                    docked_timestamp: `${draft.fields.receipt_date} 08:00:00`,
+                    transfer_timestamp: null,
+                    branch_status: "Holding"
+                });
+
+                triggerSystemToast("💾 Audit Log Verification Synced", `Successfully coupled inventory delivery tracking sheets index parameters to parent PO ${draft.fields.po_number}.`, false);
+            }
+
+            cancelOcrReview();
+            renderDashboardDashboardCommandCenter();
+        }
+
+        // MODULE 2: SUPPLIER PROFILES DIRECTORY RENDERING
+        function renderSupplierDirectoryLayout() {
+            const listContainer = document.getElementById('supplierDirectoryList');
+            listContainer.innerHTML = "";
+
+            if(STATE.suppliers.length === 0) {
+                listContainer.innerHTML = `<span class="text-xs text-slate-400 p-2 text-center">Empty directory.</span>`;
+                return;
+            }
+
+            STATE.suppliers.forEach(s => {
+                const itemNode = document.createElement('button');
+                itemNode.className = "w-full text-left text-xs px-3 py-2 rounded-lg font-medium hover:bg-slate-100 transition-colors flex flex-col gap-0.5";
+                itemNode.onclick = () => selectSupplierProfileWorkspace(s.id);
+                itemNode.innerHTML = `
+                    <span class="font-bold text-slate-800">${s.name}</span>
+                    <span class="text-[10px] mono text-slate-400">${s.code}</span>
+                `;
+                listContainer.appendChild(itemNode);
+            });
+        }
+
+        function selectSupplierProfileWorkspace(supplierId) {
+            const s = STATE.suppliers.find(sup => sup.id === supplierId);
+            const metrics = compileSupplierMetrics(supplierId);
+            const workspace = document.getElementById('supplierProfileWorkspace');
+
+            let bannerColor = "bg-emerald-50 text-emerald-800 border-emerald-200";
+            if(metrics.riskStatus === "Poor") bannerColor = "bg-amber-50 text-amber-800 border-amber-200";
+            if(metrics.riskStatus === "Critical") bannerColor = "bg-red-50 text-red-800 border-red-200";
+
+            // Extract order list records logs
+            const historyPos = STATE.purchaseOrders.filter(p => p.supplier_id === supplierId);
+            let logHtml = "";
+            historyPos.forEach(p => {
+                logHtml += `
+                    <tr class="border-b border-slate-100 text-[11px] font-mono text-slate-600">
+                        <td class="p-2">${p.po_number}</td>
+                        <td class="p-2">${p.order_date}</td>
+                        <td class="p-2">${p.qty_ordered} Units</td>
+                        <td class="p-2">$${p.total_value.toLocaleString()}</td>
+                        <td class="p-2 font-sans font-bold text-blue-600">${p.status}</td>
+                    </tr>
+                `;
+            });
+
+            workspace.innerHTML = `
+                <div class="flex flex-col gap-6">
+                    <div class="flex justify-between items-start border-b border-slate-100 pb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-900">${s.name}</h3>
+                            <p class="text-xs font-mono text-slate-400 mt-0.5">Corporate Reference ID Code: ${s.code} • Risk Framework Assessment Scope</p>
+                        </div>
+                        <span class="border px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider ${bannerColor}">${metrics.riskStatus} Risk Tier</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                            <span class="text-[10px] uppercase font-bold text-slate-400 block">Order Fulfillment Accuracy Rate</span>
+                            <div class="text-2xl font-bold text-slate-800 mt-1 font-mono">${metrics.fulfillmentRate}%</div>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Target acceptable efficiency line index threshold at 85.0%</p>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                            <span class="text-[10px] uppercase font-bold text-slate-400 block">Average Lead Time Deviation</span>
+                            <div class="text-2xl font-bold text-slate-800 mt-1 font-mono">${metrics.avgLeadTimeDeviation > 0 ? '+' : ''}${metrics.avgLeadTimeDeviation} Days</div>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Benchmarks parameters variance calculated against target delta terms</p>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                            <span class="text-[10px] uppercase font-bold text-slate-400 block">Assigned Payment Clause</span>
+                            <div class="text-sm font-bold text-blue-700 mt-2 uppercase tracking-wide">${s.payment_term_type} Clause</div>
+                            <p class="text-[10px] text-slate-400 mt-1">Automatic core processing baseline configurations</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Supplier Corporate Order Registry Ledger Log</h4>
+                        <div class="overflow-x-auto border border-slate-100 rounded-lg">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-500 font-semibold">
+                                        <th class="p-2">PO Ref Reference</th>
+                                        <th class="p-2">Issuance Date</th>
+                                        <th class="p-2">Units Ordered</th>
+                                        <th class="p-2">Capital Allocation</th>
+                                        <th class="p-2">Workflow Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${logHtml ? logHtml : '<tr><td colspan="5" class="p-4 text-center text-slate-400">No operational entries logged under this supplier record identity.</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // MODULE 3: FINANCIAL LEDGER CALCULATIONS RENDERING 
+        function calculateMaturityDate(orderDateStr, termType, expectedLeadTimeDays) {
+            let baseDate = new Date(orderDateStr);
+            // Invoice date is calculated as Order Date + execution delivery lead time 
+            baseDate.setDate(baseDate.getDate() + expectedLeadTimeDays);
+            
+            if(termType === 'EOM') {
+                // End of current Month Billing calculations mapping engine
+                return new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).toISOString().split('T')[0];
+            } else if(termType === 'NET45') {
+                baseDate.setDate(baseDate.getDate() + 45);
+                return baseDate.toISOString().split('T')[0];
+            } else if(termType === 'NET60') {
+                baseDate.setDate(baseDate.getDate() + 60);
+                return baseDate.toISOString().split('T')[0];
+            } else {
+                // Consignment Deals logic tracking default rules allocation offsets
+                return "Consignment Audit Period";
+            }
+        }
+
+        function renderFinancialLedgerData() {
+            if(!verifyAuthorization('viewFinance')) {
+                document.getElementById('financeLedgerTableBody').innerHTML = `<tr><td colspan="7" class="text-center p-8 text-red-600 font-medium">🛑 Security Privilege Denied. Finance clearance level required to compile financial sheets.</td></tr>`;
+                return;
+            }
+
+            const tbody = document.getElementById('financeLedgerTableBody');
+            tbody.innerHTML = "";
+
+            if(STATE.purchaseOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-slate-400">No liability entries compiled. Seed data arrays.</td></tr>`;
+                return;
+            }
+
+            STATE.purchaseOrders.forEach(p => {
+                const s = STATE.suppliers.find(sup => sup.id === p.supplier_id);
+                const invoiceDate = new Date(p.order_date);
+                invoiceDate.setDate(invoiceDate.getDate() + p.expected_lead_time);
+                
+                const invoiceDateStr = invoiceDate.toISOString().split('T')[0];
+                const maturityDueDateStr = calculateMaturityDate(p.order_date, s.payment_term_type, p.expected_lead_time);
+                
+                let badgeClass = "bg-blue-50 text-blue-700 border-blue-100";
+                if(p.status === "Transferred") badgeClass = "bg-slate-100 text-slate-500 border-slate-200";
+                if(p.status === "Docked") badgeClass = "bg-amber-50 text-amber-700 border-amber-200 animate-pulse";
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors font-medium text-slate-700">
+                        <td class="p-3 font-mono text-xs text-slate-900">${p.po_number}</td>
+                        <td class="p-3 text-xs">${s.name}</td>
+                        <td class="p-3 text-[11px] uppercase tracking-wider font-bold text-slate-400">${s.payment_term_type}</td>
+                        <td class="p-3 font-mono text-xs text-slate-500">${invoiceDateStr}</td>
+                        <td class="p-3 font-mono text-xs text-slate-900 font-semibold">${maturityDueDateStr}</td>
+                        <td class="p-3 text-right font-mono font-bold text-slate-900">$${p.total_value.toLocaleString()}</td>
+                        <td class="p-3 text-center"><span class="border px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${badgeClass}">${p.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        // SHEETJS EXPORT SYSTEM ARCHITECTURE CONNECTIONS
+        function exportFinanceData(formatType) {
+            if(!verifyAuthorization('viewFinance')) return;
+            
+            // Build data structure dynamically from stored records arrays
+            const dataDump = STATE.purchaseOrders.map(p => {
+                const s = STATE.suppliers.find(sup => sup.id === p.supplier_id);
+                return {
+                    "PO Number": p.po_number,
+                    "Supplier Identity": s.name,
+                    "Payment Term Clause": s.payment_term_type,
+                    "Value Capital Liabilities": p.total_value,
+                    "Maturity Process Status": p.status
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(dataDump);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Capital Ledger Liabilities");
+
+            if(formatType === 'xlsx') {
+                XLSX.writeFile(workbook, `PRO_TRACK_FINANCE_LIABILITIES_${new Date().toISOString().split('T')[0]}.xlsx`);
+            } else {
+                XLSX.writeFile(workbook, `PRO_TRACK_FINANCE_LIABILITIES_${new Date().toISOString().split('T')[0]}.csv`, { bookType: 'csv' });
+            }
+        }
+
+        // MODULE 4: LOGISTICS WAREHOUSE MOVEMENT ENGINE RENDERING
+        function renderWarehouseTrackingPipeline() {
+            const tbody = document.getElementById('warehousePipelineTableBody');
+            tbody.innerHTML = "";
+
+            if(STATE.warehouseLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-slate-400">No active tracking metrics deployed. Seed system states.</td></tr>`;
+                return;
+            }
+
+            STATE.warehouseLogs.forEach(w => {
+                const po = STATE.purchaseOrders.find(p => p.id === w.po_id);
+                const s = STATE.suppliers.find(sup => sup.id === po.supplier_id);
+
+                let actionBtnHtml = `<span class="text-xs text-slate-400 font-medium">✓ Record Loop Concluded</span>`;
+                if(!w.transfer_timestamp) {
+                    actionBtnHtml = `
+                        <button onclick="executeWarehouseBranchTransferCommit(${w.id})" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[10px] px-3 py-1 rounded-md transition-colors shadow-xs">
+                            Confirm Branch Route Dispatch
+                        </button>
+                    `;
+                }
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors text-slate-700">
+                        <td class="p-3 font-mono text-xs text-slate-900 font-medium">${po.po_number}</td>
+                        <td class="p-3 text-xs font-medium">${s.name}</td>
+                        <td class="p-3 font-mono text-xs text-slate-500">${w.docked_timestamp}</td>
+                        <td class="p-3 text-xs"><span class="font-semibold ${w.transfer_timestamp ? 'text-emerald-600' : 'text-amber-600 animate-pulse'}">${w.branch_status} ${w.transfer_timestamp ? '(@ ' + w.transfer_timestamp + ')' : '(Awaiting Unloading Drop)'}</span></td>
+                        <td class="p-3 text-center">${actionBtnHtml}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function executeWarehouseBranchTransferCommit(logId) {
+            if(!verifyAuthorization('canLogWarehouse')) return;
+
+            const idx = STATE.warehouseLogs.findIndex(w => w.id === logId);
+            if(idx !== -1) {
+                const currentFormattedStamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                STATE.warehouseLogs[idx].transfer_timestamp = currentFormattedStamp;
+                STATE.warehouseLogs[idx].branch_status = "Dispatched";
+
+                // Resolve matching parent array workflow chains state transformations entries
+                const poId = STATE.warehouseLogs[idx].po_id;
+                const poIdx = STATE.purchaseOrders.findIndex(p => p.id === poId);
+                if(poIdx !== -1) STATE.purchaseOrders[poIdx].status = "Transferred";
+
+                triggerSystemToast("⚡ Logistics Hub State Synced", "Branch route assignment execution dispatch verified into infrastructure logging records.", false);
+                renderWarehouseTrackingPipeline();
+            }
+        }
+    </script>
+</body>
+</html>

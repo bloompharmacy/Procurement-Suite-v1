@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Procurement Order Generator (Enhanced)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --ink:#20242A;
+    --ink-soft:#4B525C;
+    --paper:#E9EDEC;
+    --panel:#FFFFFF;
+    --line:#CBD2CF;
+    --band:#1B2027;
+    --amber:#E8A33D;
+    --amber-deep:#B97A1F;
+    --rust:#B8492F;
+    --teal:#3E7A66;
+    --mono:'IBM Plex Mono', monospace;
+    --sans:'IBM Plex Sans', sans-serif;
+    --disp:'Oswald', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.5;
+  }
+  .band{
+    background:var(--band);
+    color:#fff;
+    padding:36px 24px 30px;
+    position:relative;
+    overflow:hidden;
+  }
+  .band::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height:6px;
+    background:repeating-linear-gradient(45deg, var(--amber) 0 14px, var(--ink) 14px 28px);
+    opacity:0.85;
+  }
+  .band-inner{max-width:1100px; margin:0 auto; position:relative; z-index:1;}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--amber);
+    margin:0 0 8px;
+  }
+  h1{
+    font-family:var(--disp);
+    font-weight:600;
+    font-size:clamp(28px,4vw,42px);
+    margin:0 0 10px;
+    letter-spacing:0.01em;
+  }
+  .band p.sub{
+    max-width:720px;
+    color:#C9CDD3;
+    margin:0;
+    font-size:15px;
+  }
+  main{max-width:1100px; margin:0 auto; padding:28px 24px 80px;}
+  .step{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    margin-bottom:22px;
+    overflow:hidden;
+  }
+  .step-head{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:16px 20px;
+    border-bottom:1px solid var(--line);
+    background:#F4F6F5;
+  }
+  .step-num{
+    font-family:var(--disp);
+    font-size:20px;
+    font-weight:600;
+    color:#fff;
+    background:var(--ink);
+    width:32px; height:32px;
+    border-radius:2px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .step-title{
+    font-family:var(--disp);
+    font-size:18px;
+    font-weight:600;
+    letter-spacing:0.01em;
+    margin:0;
+  }
+  .step-desc{font-size:13px; color:var(--ink-soft); margin:2px 0 0;}
+  .step-body{padding:20px;}
+
+  .field-row{display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end;}
+  .field{display:flex; flex-direction:column; gap:6px; min-width:160px;}
+  label{font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); font-weight:600;}
+  select, input[type=text], input[type=number]{
+    font-family:var(--sans);
+    font-size:14px;
+    padding:9px 10px;
+    border:1px solid var(--line);
+    border-radius:3px;
+    background:#fff;
+    color:var(--ink);
+  }
+  select:focus, input:focus{outline:2px solid var(--amber-deep); outline-offset:1px;}
+
+  .toggle{
+    display:flex;
+    border:1px solid var(--line);
+    border-radius:3px;
+    overflow:hidden;
+  }
+  .toggle button{
+    font-family:var(--sans);
+    font-size:13px;
+    font-weight:600;
+    padding:9px 16px;
+    border:none;
+    background:#fff;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .toggle button.active{background:var(--ink); color:#fff;}
+  .toggle button:not(:last-child){border-right:1px solid var(--line);}
+
+  .help{
+    margin-top:16px;
+    font-size:13px;
+    color:var(--ink-soft);
+    background:#F4F6F5;
+    border:1px dashed var(--line);
+    border-radius:3px;
+    padding:12px 14px;
+  }
+  .help code{font-family:var(--mono); background:#fff; padding:1px 5px; border-radius:2px; border:1px solid var(--line);}
+
+  .supplier-card{
+    border:1px solid var(--line);
+    border-radius:4px;
+    margin-bottom:16px;
+    background:#FCFDFC;
+  }
+  .supplier-head{
+    display:flex; gap:12px; align-items:center;
+    padding:14px 16px;
+    border-bottom:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+  .supplier-head input[type=text]{flex:1; min-width:180px; font-weight:600;}
+  .remove-btn{
+    background:none; border:1px solid var(--line); color:var(--rust);
+    font-size:12px; padding:6px 10px; border-radius:3px; cursor:pointer;
+    font-weight:600;
+  }
+  .remove-btn:hover{background:#FBEAE5;}
+  
+  .supplier-config-row {
+    padding: 12px 16px;
+    background: #F8F9F9;
+    border-bottom: 1px dashed var(--line);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .supplier-config-row .field { min-width: 120px; }
+
+  .supplier-body{padding:16px; display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media(max-width:640px){.supplier-body{grid-template-columns:1fr;}}
+
+  .dropzone{
+    border:2px dashed var(--line);
+    border-radius:4px;
+    padding:16px;
+    text-align:center;
+    font-size:13px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    background:#fff;
+    transition:border-color .15s, background .15s;
+  }
+  .dropzone:hover, .dropzone.drag{border-color:var(--amber-deep); background:#FFF8EC;}
+  .dropzone .label{font-weight:600; color:var(--ink); display:block; margin-bottom:4px;}
+  .dropzone input{display:none;}
+
+  .file-chip{
+    display:flex; align-items:center; justify-content:space-between;
+    font-family:var(--mono); font-size:12px;
+    background:#F0F2F1; border:1px solid var(--line);
+    border-radius:3px; padding:6px 10px; margin-top:6px;
+  }
+  .file-chip button{background:none; border:none; color:var(--rust); cursor:pointer; font-weight:700; font-size:13px;}
+
+  .status-line{font-size:12px; margin-top:8px; font-family:var(--mono);}
+  .status-ok{color:var(--teal);}
+  .status-warn{color:var(--amber-deep);}
+  .status-err{color:var(--rust);}
+
+  .warnings-list{margin:6px 0 0; padding-left:18px; font-size:12px; color:var(--ink-soft);}
+  .warnings-list li{margin-bottom:2px;}
+
+  .add-supplier-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    background:#fff; border:1px solid var(--ink); color:var(--ink);
+    font-weight:600; font-size:13px; padding:10px 16px;
+    border-radius:3px; cursor:pointer;
+  }
+  .add-supplier-btn:hover{background:var(--ink); color:#fff;}
+
+  .generate-btn{
+    display:inline-flex; align-items:center; gap:10px;
+    background:var(--amber); color:var(--ink);
+    font-family:var(--disp); font-weight:600; font-size:17px;
+    letter-spacing:0.02em;
+    padding:14px 26px;
+    border:none; border-radius:3px;
+    cursor:pointer;
+    box-shadow:0 2px 0 var(--amber-deep);
+  }
+  .generate-btn:hover{background:var(--amber-deep); color:#fff;}
+  .generate-btn:disabled{background:#D8D3C7; color:#8A8A82; box-shadow:none; cursor:not-allowed;}
+
+  .result-panel{display:flex; gap:24px; align-items:center; flex-wrap:wrap;}
+  .stamp{
+    font-family:var(--disp);
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:0.08em;
+    color:var(--teal);
+    border:3px solid var(--teal);
+    border-radius:6px;
+    padding:10px 16px;
+    transform:rotate(-4deg);
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+  .result-stats{font-size:13px; color:var(--ink-soft);}
+  .result-stats b{color:var(--ink); font-family:var(--mono);}
+  table.summary{border-collapse:collapse; width:100%; margin-top:14px; font-size:13px;}
+  table.summary th, table.summary td{border:1px solid var(--line); padding:7px 10px; text-align:left;}
+  table.summary th{background:#F4F6F5; font-weight:600;}
+  table.summary td.num{font-family:var(--mono); text-align:right;}
+
+  .global-warnings{margin-top:16px;}
+  .global-warnings summary{cursor:pointer; font-weight:600; font-size:13px; color:var(--rust);}
+
+  footer{max-width:1100px; margin:0 auto; padding:0 24px 40px; font-size:12px; color:var(--ink-soft); display:flex; justify-content:space-between;}
+  .clear-storage{color:var(--rust); cursor:pointer; background:none; border:none; font-size:12px; font-family:var(--mono); text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="band">
+  <div class="band-inner">
+    <p class="eyebrow">Manifest / Order Cycle Tool</p>
+    <h1>Procurement Order Generator <span style="font-size:14px; font-family:var(--mono); vertical-align:middle; background:var(--teal); padding:2px 6px; border-radius:3px;">PRO Edition</span></h1>
+    <p class="sub">Turn sellout history and branch stock into ready-to-send supplier order sheets. Enhanced with Supply Chain restraints (Lead Time, MOQ, Packing Constraints) and active state preservation.</p>
+  </div>
+</div>
+
+<main>
+
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num">1</div>
+      <div>
+        <p class="step-title">Set the global run parameters</p>
+        <p class="step-desc">These apply to every supplier in this run.</p>
+      </div>
+    </div>
+    <div class="step-body">
+      <div class="field-row">
+        <div class="field">
+          <label for="stockCoverDays">Stock cover (days)</label>
+          <select id="stockCoverDays">
+            <option value="30">30</option>
+            <option value="45" selected>45</option>
+            <option value="60">60</option>
+            <option value="75">75</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="daysPerMonth">Days per assigned file</label>
+          <input type="number" id="daysPerMonth" value="30" min="1" style="width:100px">
+        </div>
+        <div class="field">
+          <label>Output layout</label>
+          <div class="toggle" id="outputModeToggle">
+            <button data-mode="consolidated" class="active">Consolidated</button>
+            <button data-mode="perBranch">Per-branch</button>
+          </div>
+        </div>
+      </div>
+      <div class="help">
+        <strong>Advanced Supply Chain Formula:</strong> <br>
+        <code>Target Cover Window = Stock Cover Days + Supplier Lead Time</code><br>
+        <code>Raw Required Order = ceil(avg daily sellout × Target Cover Window) − stock on hand</code><br>
+        <code>Final Order = Multiples of Case Pack Size (Adjusted upward if below item MOQ)</code>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num">2</div>
+      <div>
+        <p class="step-title">Add suppliers &amp; upload files</p>
+        <p class="step-desc">Configure vendor-specific supply restraints, upload inventory balances and sales logs.</p>
+      </div>
+    </div>
+    <div class="step-body">
+      <div id="suppliersContainer"></div>
+      <button class="add-supplier-btn" id="addSupplierBtn">+ Add supplier</button>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num">3</div>
+      <div>
+        <p class="step-title">Generate order sheets</p>
+        <p class="step-desc">Builds one spreadsheet workbook equipped with audit layers and downloads it.</p>
+      </div>
+    </div>
+    <div class="step-body">
+      <button class="generate-btn" id="generateBtn" disabled>Generate order sheets ↓</button>
+      <div id="resultPanel"></div>
+      <div id="globalWarnings"></div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <span>Reads <code>.xlsx</code> sheets completely local client-side. Operations are preserved in local persistence memory.</span>
+  <button class="clear-storage" id="clearStorageBtn">Clear Cached Setup</button>
+</footer>
+
+<script>
+// ---------------------------------------------------------------------------
+// State Handling with Local Storage Persistence
+// ---------------------------------------------------------------------------
+let settings = { stockCoverDays: 45, daysPerMonth: 30, outputMode: 'consolidated' };
+let suppliers = [];
+let supplierSeq = 0;
+
+function loadState() {
+  try {
+    const cachedSettings = localStorage.getItem('pog_settings');
+    const cachedSuppliers = localStorage.getItem('pog_suppliers');
+    const cachedSeq = localStorage.getItem('pog_seq');
+
+    if (cachedSettings) settings = JSON.parse(cachedSettings);
+    if (cachedSeq) supplierSeq = parseInt(cachedSeq, 10);
+    if (cachedSuppliers) {
+      suppliers = JSON.parse(cachedSuppliers);
+      // File objects cannot remain parsed across instances, clean out references safely
+      suppliers.forEach(s => {
+        s.stockFile = null;
+        s.selloutFiles = [];
+      });
+    }
+  } catch (e) {
+    console.error("Local recovery storage error", e);
+  }
+  if (suppliers.length === 0) {
+    suppliers.push(newSupplier());
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('pog_settings', JSON.stringify(settings));
+    localStorage.setItem('pog_suppliers', JSON.stringify(suppliers));
+    localStorage.setItem('pog_seq', supplierSeq.toString());
+  } catch(e) {
+    console.error("Could not persist state to localStorage", e);
+    // Don't fail silently: the user should know their setup won't survive a
+    // reload (most commonly caused by a full/quota-exceeded localStorage).
+    if(typeof globalWarningsEl !== 'undefined' && globalWarningsEl){
+      globalWarningsEl.innerHTML = `<div class="status-line status-err">⚠ Could not save your setup to local storage (${e.message || 'unknown error'}). Your configuration will be lost if you reload this page.</div>`;
+    }
+  }
+}
+
+function newSupplier(){
+  supplierSeq++;
+  return {
+    id: 'sup_' + supplierSeq,
+    name: '',
+    leadTimeDays: 0,
+    minOrderQty: 0,
+    casePackSize: 1,
+    stockFile: null,      
+    selloutFiles: [],      
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Advanced Parsing Routines
+// ---------------------------------------------------------------------------
+function readFileAsWorkbook(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const data = new Uint8Array(e.target.result);
+        resolve(XLSX.read(data, { type: 'array' }));
+      }catch(err){ reject(err); }
+    };
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function findHeaderRowIndex(rows, mustInclude){
+  const limit = Math.min(5, rows.length);
+  for(let i=0;i<limit;i++){
+    const lower = (rows[i]||[]).map(c => String(c ?? '').trim().toLowerCase());
+    if(lower.some(c => c.includes(mustInclude))) return i;
+  }
+  return 0;
+}
+
+function parseStockWorkbook(workbook){
+  const sheetName = workbook.SheetNames[0];
+  const ws = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  const warnings = [];
+  if(rows.length === 0){
+    return { branches: [], items: {}, stock: {}, warnings: ['Stock file appears to be empty.'] };
+  }
+  const headerIdx = findHeaderRowIndex(rows, 'code');
+  const header = (rows[headerIdx]||[]).map(h => String(h ?? '').trim());
+  const lower = header.map(h => h.toLowerCase());
+
+  const codeIdx = lower.findIndex(h => h.includes('code'));
+  const nameIdx = lower.findIndex(h => h.includes('item') || h.includes('name'));
+  const totalIdx = lower.findIndex(h => h === 'total' || h.includes('total'));
+  const warehouseIdx = lower.findIndex(h => h.includes('warehouse'));
+
+  if(codeIdx < 0){
+    warnings.push('Could not find a "Code" column in the stock file — check the header row.');
+  }
+
+  const excluded = new Set([codeIdx, nameIdx, totalIdx, warehouseIdx].filter(i => i >= 0));
+  const branchIdxs = header.map((h,i) => i).filter(i => !excluded.has(i) && header[i] !== '');
+  const branches = branchIdxs.map(i => header[i]);
+
+  const items = {};
+  const stock = {};
+  let skippedRows = 0;
+
+  for(let r = headerIdx+1; r < rows.length; r++){
+    const row = rows[r];
+    if(!row || row.every(c => String(c ?? '').trim() === '')) continue;
+    const code = codeIdx>=0 && row[codeIdx]!==undefined ? String(row[codeIdx]).trim() : '';
+    if(!code){ skippedRows++; continue; }
+    const name = nameIdx>=0 ? String(row[nameIdx] ?? '').trim() : '';
+    items[code] = { name };
+    stock[code] = stock[code] || {};
+
+    let rowSum = 0;
+    branchIdxs.forEach((bi, k) => {
+      const branch = branches[k];
+      const raw = row[bi];
+      if(raw === '' || raw === undefined || raw === null){
+        stock[code][branch] = (stock[code][branch]||0) + 0;
+        return;
+      }
+      const num = Number(raw);
+      if(isNaN(num)){
+        warnings.push(`Stock: non-numeric value "${raw}" for code ${code} at ${branch} — treated as 0.`);
+        stock[code][branch] = (stock[code][branch]||0) + 0;
+      } else {
+        if(num < 0){
+          warnings.push(`Stock: code ${code} at ${branch} shows negative on-hand (${num}) — verify this is an intentional backorder figure, not a data error, since it will increase the calculated order quantity.`);
+        }
+        stock[code][branch] = (stock[code][branch]||0) + num;
+        rowSum += num;
+      }
+    });
+
+    if(totalIdx>=0 && row[totalIdx]!==undefined && row[totalIdx]!==''){
+      const totalVal = Number(row[totalIdx]);
+      if(!isNaN(totalVal) && Math.abs(rowSum - totalVal) > 0.01){
+        warnings.push(`Stock: code ${code} — branch columns sum to ${rowSum} but Total column says ${totalVal}.`);
+      }
+    }
+  }
+
+  if(skippedRows > 0){
+    warnings.push(`Stock: ${skippedRows} row(s) had no SKU code and were skipped.`);
+  }
+  if(warehouseIdx>=0){
+    warnings.push(`Stock: column "${header[warehouseIdx]}" detected as a warehouse/delivery point and excluded from branch demand.`);
+  }
+
+  return { branches, warehouseColumn: warehouseIdx>=0 ? header[warehouseIdx] : null, items, stock, warnings };
+}
+
+function parseSelloutWorkbook(workbook, knownBranches){
+  const branchData = {};
+  const itemNames = {};
+  const warnings = [];
+  const foundBranches = [];
+
+  workbook.SheetNames.forEach(sheetName => {
+    const ws = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if(rows.length === 0) return;
+    const headerIdx = findHeaderRowIndex(rows, 'code');
+    const header = (rows[headerIdx]||[]).map(h => String(h ?? '').trim().toLowerCase());
+    const codeIdx = header.findIndex(h => h.includes('code'));
+    const itemIdx = header.findIndex(h => h.includes('item') || h.includes('name'));
+    const qtyIdx = header.findIndex(h => h.includes('quant') || h.includes('qty'));
+
+    if(codeIdx < 0 || qtyIdx < 0){
+      warnings.push(`Sellout: sheet "${sheetName}" is missing code/quantity columns — skipped.`);
+      return;
+    }
+
+    const isKnownBranch = knownBranches.some(b => b.trim().toLowerCase() === sheetName.trim().toLowerCase());
+    const matchedBranch = knownBranches.find(b => b.trim().toLowerCase() === sheetName.trim().toLowerCase()) || sheetName.trim();
+    foundBranches.push(matchedBranch);
+    branchData[matchedBranch] = branchData[matchedBranch] || {};
+
+    // If this tab doesn't correspond to any branch column found in the stock
+    // file, its data will never be read by calculateOrders (which only loops
+    // over stockParsed.branches). Flag this loudly rather than silently
+    // discarding real sales data.
+    if(knownBranches.length && !isKnownBranch){
+      warnings.push(`Sellout: sheet "${sheetName}" in "${workbook.__fileName || 'this file'}" does not match any branch column in the stock file — its sales data will NOT be included in any order calculation. Rename the tab to match the stock file's branch column, or add that branch to the stock file.`);
+    }
+
+    let badQtyCount = 0;
+    for(let r = headerIdx+1; r < rows.length; r++){
+      const row = rows[r];
+      if(!row || row.every(c => String(c ?? '').trim() === '')) continue;
+      const code = row[codeIdx]!==undefined ? String(row[codeIdx]).trim() : '';
+      if(!code) continue;
+      const rawQty = row[qtyIdx];
+      const qty = Number(rawQty);
+      if(isNaN(qty)){
+        badQtyCount++;
+      } else {
+        branchData[matchedBranch][code] = (branchData[matchedBranch][code]||0) + qty;
+      }
+      if(itemIdx>=0 && row[itemIdx]) itemNames[code] = String(row[itemIdx]).trim();
+    }
+    if(badQtyCount > 0){
+      warnings.push(`Sellout: sheet "${sheetName}" had ${badQtyCount} row(s) with a non-numeric quantity — treated as 0 and excluded from the total.`);
+    }
+  });
+
+  if(knownBranches.length){
+    knownBranches.forEach(b => {
+      if(!foundBranches.some(fb => fb.trim().toLowerCase() === b.trim().toLowerCase())){
+        warnings.push(`Sellout: no tab found matching branch "${b}" in "${workbook.__fileName || 'this file'}".`);
+      }
+    });
+  }
+
+  return { branchData, itemNames, warnings };
+}
+
+function aggregateSellout(selloutFiles){
+  const combined = {};
+  const itemNames = {};
+  let warnings = [];
+  selloutFiles.forEach(f => {
+    if(!f.parsed) return;
+    warnings = warnings.concat(f.parsed.warnings);
+    Object.entries(f.parsed.branchData).forEach(([branch, codes]) => {
+      combined[branch] = combined[branch] || {};
+      Object.entries(codes).forEach(([code, qty]) => {
+        combined[branch][code] = (combined[branch][code]||0) + qty;
+      });
+    });
+    Object.assign(itemNames, f.parsed.itemNames);
+  });
+  return { combined, itemNames, warnings, monthsCount: selloutFiles.length };
+}
+
+// ---------------------------------------------------------------------------
+// Logistics & Supply Chain Constrained Calculation Pipeline
+// ---------------------------------------------------------------------------
+function calculateOrders(supplier){
+  const stockParsed = supplier.stockFile.parsed;
+  const selloutAgg = aggregateSellout(supplier.selloutFiles);
+  const branches = stockParsed.branches;
+  
+  const windowDays = selloutAgg.monthsCount * settings.daysPerMonth;
+  // Dynamic window calculation adjusts configuration boundaries to encompass full cycles
+  const leadTimeOffset = Number(supplier.leadTimeDays || 0);
+  const compositeCoverageDays = settings.stockCoverDays + leadTimeOffset;
+
+  const allCodes = new Set(Object.keys(stockParsed.items));
+  Object.values(selloutAgg.combined).forEach(codes => Object.keys(codes).forEach(c => allCodes.add(c)));
+
+  const results = [];
+  allCodes.forEach(code => {
+    const name = (stockParsed.items[code] && stockParsed.items[code].name) || selloutAgg.itemNames[code] || '';
+    let totalOrder = 0, totalSold = 0;
+    const perBranch = {};
+    const operationalAudits = {};
+
+    branches.forEach(branch => {
+      const onHand = (stockParsed.stock[code] && stockParsed.stock[code][branch]) || 0;
+      const qtySold = (selloutAgg.combined[branch] && selloutAgg.combined[branch][code]) || 0;
+      totalSold += qtySold;
+      
+      const avgDaily = windowDays > 0 ? qtySold / windowDays : 0;
+      
+      // Step A: Basic raw mathematical coverage request
+      let rawOrderQty = Math.max(0, Math.ceil(avgDaily * compositeCoverageDays) - onHand);
+      let calculationPath = `Demand: ${rawOrderQty}`;
+
+      // Step B: Apply Supply Chain restraints if order quantity > 0
+      if (rawOrderQty > 0) {
+        const pack = Number(supplier.casePackSize || 1);
+        const moq = Number(supplier.minOrderQty || 0);
+
+        // Check Supplier Minimum Order Quantities (MOQ) FIRST.
+        // MOQ must be applied before pack rounding — otherwise an MOQ floor
+        // can land on a quantity that isn't actually a multiple of the case
+        // pack size, silently violating the pack constraint.
+        if (rawOrderQty < moq) {
+          rawOrderQty = moq;
+          calculationPath += ` -> MOQ Enforced: ${rawOrderQty}`;
+        }
+
+        // Apply Pack Configuration Multipliers AFTER the MOQ floor, so the
+        // final quantity always satisfies both constraints simultaneously.
+        if (pack > 1) {
+          const packsRequired = Math.ceil(rawOrderQty / pack);
+          const packRounded = packsRequired * pack;
+          if (packRounded !== rawOrderQty) {
+            rawOrderQty = packRounded;
+            calculationPath += ` -> Pack Rounded (${pack}s): ${rawOrderQty}`;
+          }
+        }
+      }
+
+      perBranch[branch] = rawOrderQty;
+      totalOrder += rawOrderQty;
+      operationalAudits[branch] = calculationPath;
+    });
+
+    results.push({ 
+      code, 
+      name, 
+      perBranch, 
+      totalOrder, 
+      zeroSale: totalSold === 0,
+      avgDailyVelocity: (totalSold / (windowDays || 1)).toFixed(2),
+      audits: operationalAudits
+    });
+  });
+
+  results.sort((a,b) => a.code.localeCompare(b.code));
+  return { branches, results, windowDays, warnings: selloutAgg.warnings };
+}
+
+// ---------------------------------------------------------------------------
+// Output Workbook Creation
+// ---------------------------------------------------------------------------
+function sanitizeSheetName(name){
+  const cleaned = String(name || 'Supplier').replace(/[:\\\/\?\*\[\]]/g, '').trim();
+  return (cleaned || 'Supplier').substring(0, 31);
+}
+function dedupeName(name, used){
+  let candidate = name, i = 1;
+  while(used.has(candidate)){
+    candidate = (name.substring(0, 28) + '_' + i);
+    i++;
+  }
+  used.add(candidate);
+  return candidate;
+}
+
+async function buildWorkbook(runData){
+  const wb = new ExcelJS.Workbook();
+  const used = new Set();
+  const headerFill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF1B2027' } };
+  const headerFont = { bold:true, color:{ argb:'FFFFFFFF' } };
+  const auditFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4F8' } };
+  const totalFill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFCE9C7' } };
+  const dimFont = { italic:true, color:{ argb:'FF9AA0A6' } };
+
+  runData.forEach(({ supplier, calc }) => {
+    const { branches, results } = calc;
+    if(settings.outputMode === 'consolidated'){
+      const sheetName = dedupeName(sanitizeSheetName(supplier.name), used);
+      const sheet = wb.addWorksheet(sheetName);
+      
+      // Generated header containing programmatic context layers
+      sheet.addRow(['Code','Item Name', 'Velocity (Daily)', ...branches, 'Total']);
+      sheet.getRow(1).eachCell(c => { c.fill = headerFill; c.font = headerFont; });
+      
+      results.forEach(r => {
+        const row = sheet.addRow([r.code, r.name, Number(r.avgDailyVelocity), ...branches.map(b => r.perBranch[b]), r.totalOrder]);
+        if(r.zeroSale) row.font = dimFont;
+        
+        // Velocity Cell Style
+        row.getCell(3).fill = auditFill;
+        
+        // Total Cell Style
+        const totalCell = row.getCell(branches.length + 4);
+        totalCell.fill = totalFill;
+        totalCell.font = Object.assign({}, r.zeroSale ? dimFont : {}, { bold:true });
+      });
+      sheet.columns.forEach((col, i) => { col.width = i < 2 ? 20 : 14; });
+      sheet.getColumn(1).font = { name: 'Consolas' };
+    } else {
+      branches.forEach(branch => {
+        const sheetName = dedupeName(sanitizeSheetName(`${supplier.name} - ${branch}`), used);
+        const sheet = wb.addWorksheet(sheetName);
+        sheet.addRow(['Code','Item Name','Quantity', 'Logistics Rule Path']);
+        sheet.getRow(1).eachCell(c => { c.fill = headerFill; c.font = headerFont; });
+        results.forEach(r => {
+          const row = sheet.addRow([r.code, r.name, r.perBranch[branch], r.audits[branch]]);
+          if(r.zeroSale) row.font = dimFont;
+          row.getCell(4).font = { size: 10, italic: true, color: { argb: 'FF5A626A' } };
+        });
+        sheet.columns.forEach((col, i) => { col.width = i === 1 ? 28 : (i === 3 ? 35 : 16); });
+      });
+    }
+  });
+
+  return wb;
+}
+
+async function downloadWorkbook(wb){
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'procurement_orders_v2.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------------------------
+// UI View Layer Rendering Engine
+// ---------------------------------------------------------------------------
+const suppliersContainer = document.getElementById('suppliersContainer');
+const generateBtn = document.getElementById('generateBtn');
+const resultPanel = document.getElementById('resultPanel');
+const globalWarningsEl = document.getElementById('globalWarnings');
+
+function statusFor(supplier){
+  if(!supplier.stockFile) return { cls:'status-warn', text:'Waiting on a stock file' };
+  if(supplier.selloutFiles.length === 0) return { cls:'status-warn', text:'Waiting on at least one sellout file' };
+  const warnCount = (supplier.stockFile.parsed.warnings.length) +
+    supplier.selloutFiles.reduce((s,f) => s + (f.parsed ? f.parsed.warnings.length : 0), 0);
+  if(warnCount > 0) return { cls:'status-warn', text: `Ready — ${warnCount} validation note(s)` };
+  return { cls:'status-ok', text:'Ready' };
+}
+
+function renderSuppliers(){
+  suppliersContainer.innerHTML = '';
+  suppliers.forEach(supplier => {
+    const card = document.createElement('div');
+    card.className = 'supplier-card';
+
+    const head = document.createElement('div');
+    head.className = 'supplier-head';
+    head.innerHTML = `
+      <input type="text" placeholder="Supplier name" value="${escapeHtml(supplier.name)}" data-role="name">
+      <button class="remove-btn" data-role="remove">Remove supplier</button>
+    `;
+    card.appendChild(head);
+
+    // Logistics Multiplier Configuration Layer Additions
+    const configRow = document.createElement('div');
+    configRow.className = 'supplier-config-row';
+    configRow.innerHTML = `
+      <div class="field">
+        <label>Lead Time (Days)</label>
+        <input type="number" min="0" value="${supplier.leadTimeDays || 0}" data-role="leadTime" style="padding: 5px 8px;">
+      </div>
+      <div class="field">
+        <label>Min Order Qty (MOQ)</label>
+        <input type="number" min="0" value="${supplier.minOrderQty || 0}" data-role="moq" style="padding: 5px 8px;">
+      </div>
+      <div class="field">
+        <label>Case Pack Size</label>
+        <input type="number" min="1" value="${supplier.casePackSize || 1}" data-role="casePack" style="padding: 5px 8px;">
+      </div>
+    `;
+    card.appendChild(configRow);
+
+    const body = document.createElement('div');
+    body.className = 'supplier-body';
+
+    // Stock dropzone
+    const stockZone = document.createElement('div');
+    stockZone.innerHTML = `
+      <div class="dropzone" data-role="stockZone">
+        <span class="label">Stock file</span>
+        one wide-format .xlsx (Code / Item Name / branches / Total)
+        <input type="file" accept=".xlsx,.xls" data-role="stockInput">
+      </div>
+    `;
+    if(supplier.stockFile){
+      const chip = document.createElement('div');
+      chip.className = 'file-chip';
+      chip.innerHTML = `<span>${escapeHtml(supplier.stockFile.fileName)}</span><button data-role="removeStock">✕</button>`;
+      stockZone.appendChild(chip);
+      const branchList = supplier.stockFile.parsed.branches.join(', ') || '—';
+      const info = document.createElement('div');
+      info.className = 'status-line status-ok';
+      info.textContent = `Branches detected: ${branchList}`;
+      stockZone.appendChild(info);
+      if(supplier.stockFile.parsed.warnings.length){
+        stockZone.appendChild(buildWarningsList(supplier.stockFile.parsed.warnings));
+      }
+    }
+    body.appendChild(stockZone);
+
+    // Sellout dropzone
+    const selloutZone = document.createElement('div');
+    selloutZone.innerHTML = `
+      <div class="dropzone" data-role="selloutZone">
+        <span class="label">Sellout file(s)</span>
+        one workbook per month (tabs = branches, columns code/item/quantity)
+        <input type="file" accept=".xlsx,.xls" multiple data-role="selloutInput">
+      </div>
+    `;
+    supplier.selloutFiles.forEach((f, idx) => {
+      const chip = document.createElement('div');
+      chip.className = 'file-chip';
+      chip.innerHTML = `<span>${escapeHtml(f.fileName)}</span><button data-role="removeSellout" data-idx="${idx}">✕</button>`;
+      selloutZone.appendChild(chip);
+    });
+    if(supplier.selloutFiles.length){
+      const allWarnings = supplier.selloutFiles.flatMap(f => f.parsed ? f.parsed.warnings : []);
+      if(allWarnings.length) selloutZone.appendChild(buildWarningsList(allWarnings));
+      const info = document.createElement('div');
+      info.className = 'status-line status-ok';
+      info.textContent = `${supplier.selloutFiles.length} file(s) assigned → ${supplier.selloutFiles.length * settings.daysPerMonth} day history window`;
+      selloutZone.appendChild(info);
+    }
+    body.appendChild(selloutZone);
+
+    card.appendChild(body);
+
+    const st = statusFor(supplier);
+    const statusBar = document.createElement('div');
+    statusBar.style.padding = '0 16px 14px';
+    statusBar.innerHTML = `<span class="status-line ${st.cls}">● ${st.text}</span>`;
+    card.appendChild(statusBar);
+
+    suppliersContainer.appendChild(card);
+
+    // Event wires
+    head.querySelector('[data-role="name"]').addEventListener('input', e => {
+      supplier.name = e.target.value;
+      saveState();
+      updateGenerateEnabled();
+    });
+    head.querySelector('[data-role="remove"]').addEventListener('click', () => {
+      suppliers = suppliers.filter(s => s.id !== supplier.id);
+      saveState();
+      renderSuppliers();
+      updateGenerateEnabled();
+    });
+
+    // Configuration input listeners
+    configRow.querySelector('[data-role="leadTime"]').addEventListener('change', e => {
+      supplier.leadTimeDays = Math.max(0, parseInt(e.target.value, 10) || 0);
+      saveState();
+    });
+    configRow.querySelector('[data-role="moq"]').addEventListener('change', e => {
+      supplier.minOrderQty = Math.max(0, parseInt(e.target.value, 10) || 0);
+      saveState();
+    });
+    configRow.querySelector('[data-role="casePack"]').addEventListener('change', e => {
+      supplier.casePackSize = Math.max(1, parseInt(e.target.value, 10) || 1);
+      saveState();
+    });
+
+    const stockDrop = stockZone.querySelector('[data-role="stockZone"]');
+    const stockInput = stockZone.querySelector('[data-role="stockInput"]');
+    wireDropzone(stockDrop, stockInput, async (file) => {
+      const wb = await readFileAsWorkbook(file);
+      const parsed = parseStockWorkbook(wb);
+      supplier.stockFile = { fileName: file.name, parsed };
+      renderSuppliers();
+      updateGenerateEnabled();
+    });
+    const removeStockBtn = stockZone.querySelector('[data-role="removeStock"]');
+    if(removeStockBtn) removeStockBtn.addEventListener('click', () => {
+      supplier.stockFile = null;
+      renderSuppliers();
+      updateGenerateEnabled();
+    });
+
+    const selloutDrop = selloutZone.querySelector('[data-role="selloutZone"]');
+    const selloutInput = selloutZone.querySelector('[data-role="selloutInput"]');
+    wireDropzone(selloutDrop, selloutInput, async (file) => {
+      const wb = await readFileAsWorkbook(file);
+      wb.__fileName = file.name;
+      const knownBranches = supplier.stockFile ? supplier.stockFile.parsed.branches : [];
+      const parsed = parseSelloutWorkbook(wb, knownBranches);
+      supplier.selloutFiles.push({ fileName: file.name, parsed });
+      renderSuppliers();
+      updateGenerateEnabled();
+    }, true);
+    selloutZone.querySelectorAll('[data-role="removeSellout"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        supplier.selloutFiles.splice(Number(btn.dataset.idx), 1);
+        renderSuppliers();
+        updateGenerateEnabled();
+      });
+    });
+  });
+}
+
+function escapeHtml(str){
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildWarningsList(warnings){
+  const ul = document.createElement('ul');
+  ul.className = 'warnings-list';
+  warnings.forEach(w => {
+    const li = document.createElement('li');
+    li.textContent = w;
+    ul.appendChild(li);
+  });
+  return ul;
+}
+
+function wireDropzone(zoneEl, inputEl, onFile, multiple){
+  zoneEl.addEventListener('click', (e) => {
+    if(e.target.tagName === 'BUTTON') return;
+    inputEl.click();
+  });
+  inputEl.addEventListener('change', async () => {
+    const files = Array.from(inputEl.files || []);
+    for(const file of files){ await onFile(file); }
+    inputEl.value = '';
+  });
+  zoneEl.addEventListener('dragover', e => { e.preventDefault(); zoneEl.classList.add('drag'); });
+  zoneEl.addEventListener('dragleave', () => zoneEl.classList.remove('drag'));
+  zoneEl.addEventListener('drop', async e => {
+    e.preventDefault();
+    zoneEl.classList.remove('drag');
+    const files = Array.from(e.dataTransfer.files || []);
+    for(const file of (multiple ? files : files.slice(0,1))){ await onFile(file); }
+  });
+}
+
+function updateGenerateEnabled(){
+  const ready = suppliers.length > 0 && suppliers.every(s => s.stockFile && s.selloutFiles.length > 0 && s.name.trim());
+  generateBtn.disabled = !ready;
+}
+
+document.getElementById('addSupplierBtn').addEventListener('click', () => {
+  suppliers.push(newSupplier());
+  saveState();
+  renderSuppliers();
+  updateGenerateEnabled();
+});
+
+document.getElementById('outputModeToggle').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  settings.outputMode = btn.dataset.mode;
+  saveState();
+  document.querySelectorAll('#outputModeToggle button').forEach(b => b.classList.toggle('active', b === btn));
+});
+document.getElementById('stockCoverDays').addEventListener('change', e => {
+  settings.stockCoverDays = Number(e.target.value);
+  saveState();
+});
+document.getElementById('daysPerMonth').addEventListener('change', e => {
+  settings.daysPerMonth = Number(e.target.value) || 30;
+  saveState();
+  renderSuppliers();
+});
+document.getElementById('clearStorageBtn').addEventListener('click', () => {
+  localStorage.clear();
+  suppliers = [newSupplier()];
+  saveState();
+  renderSuppliers();
+  updateGenerateEnabled();
+});
+
+generateBtn.addEventListener('click', async () => {
+  generateBtn.disabled = true;
+  generateBtn.textContent = 'Processing and Constraining…';
+  try{
+    const runData = [];
+    let allWarnings = [];
+    suppliers.forEach(supplier => {
+      const calc = calculateOrders(supplier);
+      allWarnings = allWarnings.concat(
+        supplier.stockFile.parsed.warnings.map(w => `[${supplier.name}] ${w}`),
+        calc.warnings.map(w => `[${supplier.name}] ${w}`)
+      );
+      runData.push({ supplier, calc });
+    });
+
+    const wb = await buildWorkbook(runData);
+    await downloadWorkbook(wb);
+
+    renderResults(runData, allWarnings);
+  }catch(err){
+    resultPanel.innerHTML = `<p class="status-line status-err">Could not generate: ${err.message}</p>`;
+  }finally{
+    generateBtn.disabled = false;
+    generateBtn.textContent = 'Generate order sheets ↓';
+    updateGenerateEnabled();
+  }
+});
+
+function renderResults(runData, warnings){
+  const totalSkus = runData.reduce((s,d) => s + d.calc.results.length, 0);
+  const totalUnits = runData.reduce((s,d) => s + d.calc.results.reduce((a,r) => a + r.totalOrder, 0), 0);
+
+  let rows = runData.map(({supplier, calc}) => {
+    const units = calc.results.reduce((a,r) => a + r.totalOrder, 0);
+    return `<tr><td>${supplier.name}</td><td class="num">${calc.results.length}</td><td class="num">${calc.branches.length}</td><td class="num">${calc.windowDays}</td><td class="num">${units}</td></tr>`;
+  }).join('');
+
+  resultPanel.innerHTML = `
+    <div class="result-panel" style="margin-top:16px;">
+      <div class="stamp">Orders generated</div>
+      <div class="result-stats">
+        <b>${suppliers.length}</b> supplier(s) · <b>${totalSkus}</b> SKU line(s) · <b>${totalUnits}</b> total units ordered<br>
+        Layout: <b>${settings.outputMode === 'consolidated' ? 'Consolidated' : 'Per-branch'}</b> · Stock cover: <b>${settings.stockCoverDays}d</b>
+      </div>
+    </div>
+    <table class="summary">
+      <thead><tr><th>Supplier</th><th>SKUs</th><th>Branches</th><th>History window (days)</th><th>Units ordered</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+
+  if(warnings.length){
+    globalWarningsEl.innerHTML = `
+      <details class="global-warnings">
+        <summary>${warnings.length} validation note(s) across this run</summary>
+        ${buildWarningsList(warnings).outerHTML}
+      </details>
+    `;
+  } else {
+    globalWarningsEl.innerHTML = '';
+  }
+}
+
+// Initialization routine
+loadState();
+renderSuppliers();
+updateGenerateEnabled();
+
+// Sync initial dropdown states with recovered state
+document.getElementById('stockCoverDays').value = settings.stockCoverDays;
+document.getElementById('daysPerMonth').value = settings.daysPerMonth;
+document.querySelectorAll('#outputModeToggle button').forEach(b => b.classList.toggle('active', b.dataset.mode === settings.outputMode));
+</script>
+</body>
+</html>
