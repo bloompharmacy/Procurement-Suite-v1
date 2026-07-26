@@ -1,0 +1,62 @@
+rules_version = '2';
+// =====================================================================
+// Firestore Security Rules — General Procurement Suite
+// ---------------------------------------------------------------------
+// Paste this into Firebase console → Firestore Database → Rules → Publish
+// (or deploy with `firebase deploy --only firestore:rules`).
+//
+// Access is driven by a Firebase Auth CUSTOM CLAIM `role`, one of:
+//   manager | specialist | warehouse | finance
+// Set that claim server-side via functions/setUserRole or admin/set-role.js.
+// This matches the client matrix in unified/js/rbac.js — but THIS file is
+// the real enforcement; the client cannot bypass it.
+// =====================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn()      { return request.auth != null; }
+    function role()          { return request.auth.token.role; }
+    function hasRole(roles)  { return signedIn() && (role() in roles); }
+    // Any user with one of the four assigned roles may READ all data.
+    function known()         { return hasRole(['manager','specialist','warehouse','finance']); }
+
+    match /suppliers/{id} {
+      allow read:  if known();
+      allow write: if hasRole(['manager','specialist']);
+    }
+    match /branches/{id} {
+      allow read:  if known();
+      allow write: if hasRole(['manager','specialist']);
+    }
+    match /sellout/{id} {
+      allow read:  if known();
+      allow write: if hasRole(['manager','specialist','warehouse']);
+    }
+    match /orders/{id} {
+      allow read:  if known();
+      allow write: if hasRole(['manager','specialist','warehouse']);
+    }
+    match /contracts/{id} {
+      allow read:  if known();
+      allow write: if hasRole(['manager','specialist','finance']);
+    }
+    match /offers/{id} {
+      allow read:  if known();
+      allow write: if hasRole(['manager','specialist']);
+    }
+    match /budgets/{id} {
+      allow read:  if known();
+      allow write: if hasRole(['manager','finance']);
+    }
+    match /meta/{id} {
+      allow read:  if known();
+      allow write: if hasRole(['manager']);
+    }
+
+    // Explicit default-deny for any other path (documentation of intent;
+    // unmatched paths are denied by default anyway).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

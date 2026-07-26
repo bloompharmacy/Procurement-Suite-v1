@@ -1,0 +1,30 @@
+{
+  "//": "Composite indexes for the paginated queries in store.js pageQuery(). The scoped realtime subscriptions (month range only) use single-field indexes that Firestore auto-creates, so they need nothing here. These composites are required when browsing a single supplier's history ordered by month (where supplierId == X, orderBy month desc). Deploy with `firebase deploy --only firestore:indexes`, or click the auto-generated index link Firestore prints in the console the first time such a query runs.",
+  "indexes": [
+    {
+      "collectionGroup": "sellout",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "supplierId", "order": "ASCENDING" },
+        { "fieldPath": "month", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sellout",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branchId", "order": "ASCENDING" },
+        { "fieldPath": "month", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "supplierId", "order": "ASCENDING" },
+        { "fieldPath": "month", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

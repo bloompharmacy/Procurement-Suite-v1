@@ -1,0 +1,8 @@
+{
+  "name": "gpo-admin",
+  "description": "Local admin tooling for the General Procurement Suite (role bootstrap)",
+  "private": true,
+  "dependencies": {
+    "firebase-admin": "^12.1.0"
+  }
+}
